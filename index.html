@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LetterLogic</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --accent:#0b76ef;
+      --muted:#667085;
+      --danger:#ef4444;
+      --ok:#16a34a;
+      --shadow: 0 6px 18px rgba(17,24,39,0.06);
+      --radius:12px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg, #eef6ff 0%, var(--bg) 100%);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      color:#0f172a;
+    }
+
+    .app {
+      width:100%;
+      max-width:760px;
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:28px;
+      box-shadow:var(--shadow);
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    h1{
+      font-size:20px;
+      margin:0;
+    }
+    p.lead{
+      margin:6px 0 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .top-row{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:18px;
+      flex-wrap:wrap;
+    }
+
+    .stats {
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-left:auto;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .card {
+      background:linear-gradient(180deg, #ffffff, #fbfdff);
+      border-radius:10px;
+      padding:18px;
+      box-shadow:0 4px 10px rgba(11,22,45,0.04);
+      margin-bottom:16px;
+    }
+
+    .word {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+      font-size:32px;
+      letter-spacing:8px;
+      padding:8px 0;
+    }
+
+    .info-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+
+    .guessed, .wrong {
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .letters {
+      display:grid;
+      grid-template-columns: repeat(13, 1fr);
+      gap:8px;
+      margin-top:8px;
+    }
+
+    .letters button {
+      padding:10px 8px;
+      border-radius:8px;
+      border:1px solid rgba(15,23,42,0.06);
+      background:white;
+      font-weight:600;
+      cursor:pointer;
+      user-select:none;
+      transition:all .12s ease;
+      box-shadow:0 1px 0 rgba(11,22,45,0.02);
+    }
+    .letters button:hover{ transform:translateY(-2px) }
+    .letters button.disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .letters button.wrong{
+      background: #ffefef;
+      border-color: rgba(239,68,68,0.18);
+      color:var(--danger);
+    }
+    .letters button.right{
+      background:#f0fff5;
+      border-color: rgba(16,185,129,0.16);
+      color:var(--ok);
+    }
+
+    .controls{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+      align-items:center;
+    }
+
+    .btn {
+      background:var(--accent);
+      color:white;
+      padding:10px 14px;
+      border-radius:10px;
+      border:0;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow:0 6px 14px rgba(11,118,239,0.12);
+    }
+    .btn.secondary{
+      background:transparent;
+      color:var(--accent);
+      border:1px solid rgba(11,118,239,0.12);
+      box-shadow:none;
+    }
+
+    .message{
+      padding:10px 12px;
+      border-radius:8px;
+      font-weight:700;
+      display:inline-block;
+      margin-left:6px;
+    }
+    .message.win{ background:#f0fff5; color:var(--ok); border:1px solid rgba(16,185,129,0.12) }
+    .message.lose{ background:#fff5f5; color:var(--danger); border:1px solid rgba(239,68,68,0.08) }
+
+    footer.note{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    @media (max-width:520px){
+      .letters{ grid-template-columns: repeat(7, 1fr) }
+      .word{ font-size:26px; letter-spacing:6px }
+    }
+
+   .hide-in-list {
+      color: white !important;
+}
+
+  </style>
+</head>
+<body>
+  <main class="app" role="main" aria-labelledby="title">
+    <header>
+      <div>
+        <h1 id="title">LetterLogic</h1>
+        <p class="lead">Guess letters to reveal the secret word. 6 wrong guesses = game over.</p>
+      </div>
+      <div class="stats" aria-hidden="true">
+        <div id="strikeDisplay">Strikes: 0 / 6</div>
+        <div id="guessedCount">Guessed: 0</div>
+      </div>
+    </header>
+
+    <section class="card" aria-live="polite">
+      <div class="word" id="maskedWord" aria-label="Secret word">_ _ _ _ _ _</div>
+
+      <div class="info-row">
+        <div>
+          <div class="guessed">Guessed letters: <span id="allGuessed">-</span></div>
+          <div class="wrong" style="margin-top:6px">Wrong guesses: <span id="wrongGuessed">-</span></div>
+        </div>
+
+        <div style="text-align:right">
+          <div id="statusMessage" aria-atomic="true"></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:13px; color:var(--muted)">Pick a letter</div>
+        <div class="letters" id="lettersGrid" role="group" aria-label="Letter buttons"></div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="restartBtn" title="Start a new game">Restart</button>
+        <button class="btn secondary" id="hintBtn" title="Reveal a single correct letter">Reveal letter</button>
+      </div>
+    </section>
+
+    <footer class="note">
+      Words: <span id="wordListPreview">10 words</span>. Built by Robin. 
+    </footer>
+  </main>
+
+  <script>
+    // Words — same list as your Python sample
+    const words = [
+      "python",
+      "router",
+      "signal",
+      "matrix",
+      "verify",
+      "cached",
+      "fiber",
+      "update",
+      "packet",
+      "config"
+    ];
+
+    // Gameplay variables
+    const maxStrikes = 6;
+    let secretWord = "";
+    let guessedLetters = new Set();
+    let wrongGuesses = new Set();
+    let gameOver = false;
+
+    // DOM
+    const maskedWordEl = document.getElementById("maskedWord");
+    const lettersGrid = document.getElementById("lettersGrid");
+    const allGuessedEl = document.getElementById("allGuessed");
+    const wrongGuessedEl = document.getElementById("wrongGuessed");
+    const strikeDisplay = document.getElementById("strikeDisplay");
+    const guessedCount = document.getElementById("guessedCount");
+    const statusMessage = document.getElementById("statusMessage");
+    const restartBtn = document.getElementById("restartBtn");
+    const hintBtn = document.getElementById("hintBtn");
+    const wordListPreview = document.getElementById("wordListPreview");
+
+    const hiddenWords = [
+  "python", "router", "signal", "matrix", "verify",
+  "cached", "fiber", "update", "packet", "config"
+];
+
+wordListPreview.innerHTML = words.map(w =>
+  hiddenWords.includes(w)
+    ? `<span class="hide-in-list">${w}</span>`
+    : w
+).join(", ");
+
+
+    // Build letter buttons A-Z
+    const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+    function buildLetterButtons() {
+      lettersGrid.innerHTML = "";
+      alphabet.forEach(letter => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = letter;
+        btn.dataset.letter = letter;
+        btn.addEventListener("click", () => handleGuess(letter));
+        btn.setAttribute("aria-label", "Letter " + letter.toUpperCase());
+        lettersGrid.appendChild(btn);
+      });
+    }
+
+    function newGame(){
+      secretWord = words[Math.floor(Math.random() * words.length)];
+      guessedLetters = new Set();
+      wrongGuesses = new Set();
+      gameOver = false;
+      statusMessage.innerHTML = "";
+      updateUI();
+      enableAllButtons();
+    }
+
+    function updateUI(){
+      // masked word
+      const masked = [...secretWord].map(ch => (guessedLetters.has(ch) ? ch : "_")).join(" ");
+      maskedWordEl.textContent = masked;
+
+      // guessed lists
+      const allGuessed = [...new Set([...guessedLetters, ...wrongGuesses])].sort().join(" ");
+      allGuessedEl.textContent = allGuessed || "-";
+      wrongGuessedEl.textContent = [...wrongGuesses].sort().join(" ") || "-";
+
+      // stats
+      strikeDisplay.textContent = `Strikes: ${wrongGuesses.size} / ${maxStrikes}`;
+      guessedCount.textContent = `Guessed: ${allGuessed.split(" ").filter(Boolean).length}`;
+
+      // check win
+      const won = [...secretWord].every(ch => guessedLetters.has(ch));
+      if (won && !gameOver) {
+        gameOver = true;
+        showWin();
+      } else if (wrongGuesses.size >= maxStrikes && !gameOver) {
+        gameOver = true;
+        showLose();
+      }
+    }
+
+    function handleGuess(letter) {
+      if (gameOver) return;
+      // prevent repeat
+      if (guessedLetters.has(letter) || wrongGuesses.has(letter)) return;
+
+      const btn = [...lettersGrid.children].find(b => b.dataset.letter === letter);
+      if (secretWord.includes(letter)) {
+        guessedLetters.add(letter);
+        if (btn) btn.classList.add("right");
+      } else {
+        wrongGuesses.add(letter);
+        if (btn) btn.classList.add("wrong");
+      }
+      if (btn) {
+        btn.classList.add("disabled");
+        btn.disabled = true;
+      }
+      updateUI();
+    }
+
+    function showWin(){
+      statusMessage.innerHTML = '<span class="message win">You win! 🎉</span>';
+      highlightAllCorrect();
+      disableAllButtons();
+    }
+
+    function showLose(){
+      statusMessage.innerHTML = '<span class="message lose">You lose — word: ' + secretWord + '</span>';
+      revealWord();
+      disableAllButtons();
+    }
+
+    function revealWord(){
+      maskedWordEl.textContent = [...secretWord].join(" ");
+    }
+
+    function disableAllButtons(){
+      [...lettersGrid.children].forEach(b => {
+        b.disabled = true;
+        b.classList.add("disabled");
+      });
+    }
+
+    function enableAllButtons(){
+      [...lettersGrid.children].forEach(b => {
+        b.disabled = false;
+        b.classList.remove("disabled","wrong","right");
+      });
+    }
+
+    function highlightAllCorrect(){
+      [...new Set([...guessedLetters])].forEach(letter => {
+        const btn = [...lettersGrid.children].find(b => b.dataset.letter === letter);
+        if (btn) btn.classList.add("right");
+      });
+    }
+
+    // Reveal a single unrevealed correct letter (hint)
+    function revealOneLetter(){
+      if (gameOver) return;
+      const unrevealed = [...new Set(secretWord.split(""))].filter(ch => !guessedLetters.has(ch));
+      if (unrevealed.length === 0) return;
+      const pick = unrevealed[Math.floor(Math.random()*unrevealed.length)];
+      guessedLetters.add(pick);
+      const btn = [...lettersGrid.children].find(b => b.dataset.letter === pick);
+      if (btn){
+        btn.classList.add("right");
+        btn.disabled = true;
+        btn.classList.add("disabled");
+      }
+      updateUI();
+    }
+
+    // Keyboard support
+    document.addEventListener("keydown", (e) => {
+      if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+        handleGuess(e.key.toLowerCase());
+      } else if (e.key === "Enter" && gameOver) {
+        newGame();
+      }
+    });
+
+    // Buttons
+    restartBtn.addEventListener("click", () => newGame());
+    hintBtn.addEventListener("click", () => revealOneLetter());
+
+    // init
+    buildLetterButtons();
+    newGame();
+  </script>
+</body>
+</html>
